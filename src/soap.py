@@ -11,11 +11,11 @@ from datetime import timedelta
 import logging
 import threading
 
-from lxml import etree
 from zeep import Client, Settings
 from zeep.exceptions import Fault, TransportError
 from zeep.transports import Transport
 
+from .parsing import get, to_text, unwrap_rows
 from .exceptions import (
     YukiAuthError,
     YukiConfigError,
@@ -40,8 +40,34 @@ HOSTS = {
     "be": "https://api.yukiworks.be",
 }
 
+# Archive.asmx imports the SOAP-encoding schema (for the StringArray of its
+# HTTP bindings) without a schemaLocation, so zeep would download it from
+# schemas.xmlsoap.org on every new client. That fails behind a restrictive
+# proxy, and the SOAP calls never use the type. A minimal local copy is served instead.
+SOAP_ENCODING_NAMESPACE = "http://schemas.xmlsoap.org/soap/encoding/"
+SOAP_ENCODING_SCHEMA = b"""<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://schemas.xmlsoap.org/soap/encoding/">
+  <xs:attribute name="arrayType" type="xs:string"/>
+  <xs:complexType name="Array">
+    <xs:sequence>
+      <xs:any minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xs:sequence>
+    <xs:anyAttribute processContents="lax"/>
+  </xs:complexType>
+</xs:schema>
+"""
+
 _CLIENTS: dict[str, Client] = {}
 _CLIENTS_LOCK = threading.Lock()
+
+
+class YukiTransport(Transport):
+    """zeep transport that serves the SOAP-encoding schema locally."""
+
+    def load(self, url):
+        if url.split("://", 1)[-1].rstrip("/") == SOAP_ENCODING_NAMESPACE.split("://", 1)[-1].rstrip("/"):
+            return SOAP_ENCODING_SCHEMA
+        return super().load(url)
 
 
 @dataclass(frozen=True)
@@ -98,7 +124,7 @@ def get_client(wsdl_url_value: str) -> Client:
             client = Client(
                 wsdl_url_value,
                 settings=Settings(strict=False, xml_huge_tree=True),
-                transport=Transport(timeout=30, operation_timeout=60),
+                transport=YukiTransport(timeout=30, operation_timeout=60),
             )
             _CLIENTS[wsdl_url_value] = client
         return client
@@ -111,7 +137,13 @@ def clear_client_cache() -> None:
         _CLIENTS.clear()
 
 
-def invoke(wsdl_url_value: str, operation: str, *, debug: bool = False, **parameters):
+def invoke(
+    wsdl_url_value: str,
+    operation: str,
+    *,
+    debug: bool = False,
+    **parameters,
+):
     """Call one SOAP operation and return the zeep result.
 
     Parameter values are not logged. Session ids and access keys stay out of debug output.
@@ -227,7 +259,12 @@ def get_current_domain(
     return domains[0]
 
 
-def discover_domains(api_key: str, region: str, *, debug: bool = False) -> list[Domain]:
+def discover_domains(
+    api_key: str,
+    region: str,
+    *,
+    debug: bool = False,
+) -> list[Domain]:
     """Authenticate and return the domains visible to an access key.
 
     This does not select a domain and does not store the session. Use it while
@@ -249,70 +286,21 @@ def parse_domains(result) -> list[Domain]:
     """Turn a ``Domains`` or ``GetCurrentDomain`` payload into :class:`Domain` values."""
 
     domains: list[Domain] = []
-    for element in _domain_elements(result):
-        domain_id = (
-            element.get("ID")
-            or element.get("Id")
-            or element.get("id")
-            or _child_text(element, "ID")
-            or ""
-        ).strip()
+    for row in unwrap_rows(result, "Domain"):
+        domain_id = to_text(get(row, "ID"))
         if not domain_id:
             continue
-        status_element = _child(element, "Status")
+        status = get(row, "Status")
         domains.append(
             Domain(
                 id=domain_id,
-                name=_child_text(element, "Name") or element.get("Name") or element.get("name") or "",
-                url=_child_text(element, "URL") or element.get("URL") or element.get("url"),
-                status=(status_element.text or "").strip() if status_element is not None and status_element.text else None,
-                status_id=status_element.get("ID") if status_element is not None else None,
+                name=to_text(get(row, "Name")) or "",
+                url=to_text(get(row, "URL")),
+                status=to_text(status),
+                status_id=to_text(get(status, "ID")),
             )
         )
     return domains
-
-
-def _domain_elements(result):
-    if result is None:
-        return []
-    if isinstance(result, list):
-        nodes = result
-    elif hasattr(result, "iter"):
-        nodes = [result]
-    else:
-        inner = getattr(result, "_value_1", None)
-        if inner is None:
-            return []
-        return _domain_elements(inner)
-
-    elements = []
-    for node in nodes:
-        if not hasattr(node, "iter"):
-            continue
-        for element in node.iter():
-            if _local_name(element).lower() == "domain":
-                elements.append(element)
-    return elements
-
-
-def _child(element, name: str):
-    wanted = name.lower()
-    for child in element:
-        if _local_name(child).lower() == wanted:
-            return child
-    return None
-
-
-def _child_text(element, name: str) -> str | None:
-    child = _child(element, name)
-    if child is None or child.text is None:
-        return None
-    text = child.text.strip()
-    return text or None
-
-
-def _local_name(element) -> str:
-    return etree.QName(element).localname
 
 
 def _require_session(session_id: str) -> None:
@@ -333,8 +321,14 @@ def _raise_for_fault(fault: Fault, *, region: str | None = None) -> None:
         raise YukiAuthError(f"{message}{region_note}. The other Yuki region was not tried.")
     if "invalid session" in lowered:
         raise YukiSessionError(message)
-    if "domain" in lowered:
-        raise YukiDomainError(message)
+    # Checked before the generic "domain" test: a limit message can name the domain.
     if "daily limit" in lowered:
         raise YukiRateLimitError(message)
+    if "no active database" in lowered:
+        raise YukiDomainError(
+            f"{message}. The administration does not exist on this host: check the region "
+            "(an administration only exists on the API host of its own region)."
+        )
+    if "domain" in lowered:
+        raise YukiDomainError(message)
     raise YukiSoapError(message)
