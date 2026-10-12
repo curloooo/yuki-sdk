@@ -1,0 +1,158 @@
+{
+  "_source": "Request elements, response types and enums of the operations the SDK calls, taken from https://api.yukiworks.be/ws/<Service>.asmx?WSDL on 2026-10-12. '!' marks minOccurs=1.",
+  "AccountingInfo": {
+    "ops": {
+      "GetGLAccountScheme": {"p": ["sessionID:string", "administrationID:string"], "r": "ArrayOfGlAccount"},
+      "GetCustomPaymentMethods": {"p": ["sessionID:string", "administrationID:string"], "r": "ArrayOfPaymentMethod"},
+      "GetRGSScheme": {"p": ["sessionID:string", "administrationID:string", "rgsVersion:string"], "r": "ArrayOfRGSEntry"},
+      "GetPeriodDateTable": {"p": ["sessionID:string", "administrationID:string", "yearID:int!"], "r": "AdministrationPeriod"},
+      "GetFinancialYearModifiedDate": {"p": ["sessionID:string", "administrationID:string", "yearID:int!"], "r": "dateTime"},
+      "GetStartBalanceByGlAccount": {"p": ["sessionID:string", "administrationID:string", "bookyear:int!", "financialMode:int!"], "r": "ArrayOfAccountStartBalance"},
+      "GetTransactionDetails": {"p": ["sessionID:string", "administrationID:string", "GLAccountCode:string", "StartDate:dateTime!", "EndDate:dateTime!", "financialMode:int!"], "r": "ArrayOfTransactionInfo"},
+      "GetTransactionDocument": {"p": ["sessionID:string", "administrationID:string", "transactionID:string"], "r": "TransactionDocument"},
+      "GetContactDefaultValues": {"p": ["sessionID:string", "administrationID:string", "contactID:string"], "r": "ArrayOfContactDefaultValues"},
+      "GetTransactions": {"p": ["sessionID:string", "administrationID:string", "glAccountCode:string", "startDate:dateTime!", "endDate:dateTime!", "financialMode:int", "dataGroups:string", "numberOfRecords:int", "startRecord:int", "searchValues:ArrayOfTransactionSearch"], "r": "ArrayOfTransaction"},
+      "GetProjectBalance": {"p": ["sessionID:string", "administrationID:string", "GLAccountCode:string", "projectCode:string", "StartDate:dateTime!", "EndDate:dateTime!"], "r": "ArrayOfProjectBalance"},
+      "GetProjectsAndID": {"p": ["sessionID:string", "administrationID:string", "searchOption:ProjectSearchOption!", "searchValue:string"], "r": "ArrayOfProject"}
+    },
+    "types": {
+      "GlAccount": ["code:string", "type:int", "subtype:int", "isEnabled:boolean", "descripton:string", "descriptionNL:string", "descriptionFR:string", "descriptionEN:string", "isVATApplicable:boolean", "deductableVATPercentage:decimal", "professionalPercentage:decimal"],
+      "PaymentMethod": ["ID:int", "Description:string"],
+      "RGSEntry": ["YukiCode:string", "YukiIsEnabled:string", "YukiDescription:string", "RgsReferenceCode:string", "RgsDescription:string", "RgsFlipCode:string"],
+      "AdministrationPeriod": ["name:string", "period:dateTime", "wholePeriod:string", "ISO8601Period:boolean"],
+      "AccountStartBalance": ["accountID:string", "startBalance:string", "accountDescription:string"],
+      "TransactionInfo": ["id:string", "hID:string", "transactionDate:dateTime", "description:string", "transactionAmount:decimal", "transactionAmountForeignCurrency:decimal", "currencyRate:decimal", "currency:string", "taxCodeDescription:string", "fullName:string", "CoCNumber:string", "VATNumber:string", "contactHID:int", "contactCode:string", "contactCountry:string", "contactZipcode:string", "project:string", "projectCode:string", "glAccountCode:string", "documentID:string", "documentReference:string", "documentType:string", "documentFolder:string", "documentFolderTab:string", "contactID:string", "periodId:string", "company:string", "mutationUser:string"],
+      "TransactionDocument": ["fileName:string", "filedata:base64Binary"],
+      "ContactDefaultValues": ["ContactId:string", "ContactName:string", "DefaultBankAccount:string", "DefaultValues:ArrayOfDefaultValue"],
+      "DefaultValue": ["InputFields:InputFields", "OutputFields:OutputFields", "Created:dateTime"],
+      "InputFields": ["DocumentType:string", "ContactName:string", "Priority:int", "Amount:string", "Currency:string", "StartDate:string", "EndDate:string", "Text:string"],
+      "OutputFields": ["GLAccount:string", "VATCode:string", "PaymentMethod:string", "PaymentTerm:string"],
+      "TransactionSearch": ["SearchOption:TransactionSearchOption", "SearchValue:string"],
+      "Transaction": ["id:string", "hID:string", "transactionDate:dateTime", "description:string", "amount:decimal", "glAccountCode:string", "contact:Contact", "document:Document", "documentProcessed:DocumentProcessed", "documentMatched:DocumentMatched", "foreignCurrency:ForeignCurrency", "vat:VAT", "project:ProjectInfo"],
+      "Contact": ["@id", "HID:int", "fullName:string", "zipCode:string", "country:string", "contactCode:string", "CoCNumber:string", "VATNumber:string"],
+      "Document": ["@id", "HID:int", "reference:string", "type:string", "typeDescription:string", "folderId:int", "folder:string", "folderTabId:int", "folderTab:string", "created:dateTime", "modified:dateTime", "uploadMethod:string"],
+      "DocumentProcessed": ["processedDate:dateTime", "processedBy:string"],
+      "DocumentMatched": ["matchDate:dateTime", "matchedBy:string"],
+      "ForeignCurrency": ["amountFC:decimal", "rate:decimal", "currency:string"],
+      "VAT": ["codeType:short", "codeDescription:string", "codePercentage:decimal"],
+      "ProjectInfo": ["code:string", "description:string"],
+      "ProjectBalance": ["glAccountCode:string", "project:string", "projectCode:string", "amount:decimal"],
+      "Project": ["description:string", "HID:int", "code:string", "startDate:dateTime", "endDate:dateTime", "company:string", "contact:string", "tags:string", "budgetSales:decimal", "budgetPurchase:decimal", "contactID:string", "id:string"]
+    },
+    "enums": {
+      "TransactionSearchOption": ["AmountGreaterThanEqual", "AmountLessThanEqual"],
+      "ProjectSearchOption": ["All", "Company", "Code", "Description"]
+    }
+  },
+  "Accounting": {
+    "ops": {
+      "GLAccountBalance": {"p": ["sessionID:string", "administrationID:string", "transactionDate:dateTime!"], "r": "any"},
+      "GLAccountBalanceFiscal": {"p": ["sessionID:string", "administrationID:string", "transactionDate:dateTime!"], "r": "any"},
+      "GLAccountBalanceYearEnd": {"p": ["sessionID:string", "administrationID:string", "transactionDate:dateTime!"], "r": "any"},
+      "GLAccountTransactions": {"p": ["sessionID:string", "administrationID:string", "GLAccountCode:string", "StartDate:dateTime!", "EndDate:dateTime!"], "r": "any"},
+      "GLAccountTransactionsAndContact": {"p": ["sessionID:string", "administrationID:string", "GLAccountCode:string", "StartDate:dateTime!", "EndDate:dateTime!"], "r": "any"},
+      "GLAccountTransactionsFiscal": {"p": ["sessionID:string", "administrationID:string", "GLAccountCode:string", "StartDate:dateTime!", "EndDate:dateTime!"], "r": "any"},
+      "NetRevenue": {"p": ["sessionID:string", "administrationID:string", "StartDate:dateTime!", "EndDate:dateTime!"], "r": "decimal"},
+      "NetRevenueFiscal": {"p": ["sessionID:string", "administrationID:string", "StartDate:dateTime!", "EndDate:dateTime!"], "r": "decimal"},
+      "OutstandingCreditorItems": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!"], "r": "any"},
+      "OutstandingCreditorItemsByDateOutstanding": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!", "dateOutstanding:dateTime!"], "r": "any"},
+      "OutstandingCreditorItemsByDate": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!", "startDate:dateTime!", "endDate:dateTime!"], "r": "any"},
+      "OutstandingCreditorWithPaymentReference": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!", "startDate:dateTime!", "endDate:dateTime!"], "r": "any"},
+      "OutstandingDebtorItems": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!"], "r": "any"},
+      "OutstandingDebtorItemsByDateOutstanding": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!", "dateOutstanding:dateTime!"], "r": "any"},
+      "OutstandingDebtorItemsWithLanguage": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!"], "r": "any"},
+      "OutstandingDebtorItemsByDate": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!", "startDate:dateTime!", "endDate:dateTime!"], "r": "any"},
+      "OutstandingDebtorWithPaymentReference": {"p": ["sessionID:string", "administrationID:string", "includeBankTransactions:boolean!", "sortOrder:OutstandingItemsSortOrder!", "startDate:dateTime!", "endDate:dateTime!"], "r": "any"},
+      "CheckOutstandingItem": {"p": ["sessionID:string", "Reference:string"], "r": "any"},
+      "CheckOutstandingItemAdmin": {"p": ["sessionID:string", "administrationID:string", "Reference:string"], "r": "any"}
+    },
+    "types": {},
+    "enums": {
+      "OutstandingItemsSortOrder": ["ContactAsc", "ContactDesc", "AmountAsc", "AmountDesc", "DateAsc", "DateDesc"]
+    }
+  },
+  "Contact": {
+    "ops": {
+      "SearchContacts": {"p": ["sessionID:string", "domainID:string", "searchOption:ContactSearchOption!", "searchValue:string", "sortOrder:ContactSortOrder!", "modifiedAfter:dateTime!", "active:ContactActive!", "pageNumber:int!"], "r": "any"},
+      "GetSuppliersAndCustomers": {"p": ["sessionID:string", "domainID:string", "searchOption:ContactSearchOption!", "searchValue:string", "sortOrder:ContactSortOrder!", "modifiedAfter:dateTime!", "active:ContactActive!", "pageNumber:int!", "contactType:ContactType!"], "r": "any"},
+      "Administrations": {"p": ["sessionID:string"], "r": "any"},
+      "AdministrationsWithInternalCustomerCode": {"p": ["sessionID:string"], "r": "any"},
+      "AdministrationID": {"p": ["sessionID:string", "administrationName:string"], "r": "string"},
+      "Companies": {"p": ["sessionID:string"], "r": "any"},
+      "Language": {"p": ["sessionID:string"], "r": "string"},
+      "SupportedLanguages": {"p": ["sessionID:string"], "r": "any"}
+    },
+    "types": {},
+    "enums": {
+      "ContactSearchOption": ["All", "Name", "City", "Postcode", "Tag", "Email", "Website", "Phone", "Code", "CoCNumber", "VATNumber", "BankAccount", "ID", "ContactType", "HID"],
+      "ContactSortOrder": ["Name", "LastName", "CreatedAsc", "CreatedDesc", "ModifiedAsc", "ModifiedDesc", "HID"],
+      "ContactActive": ["Both", "Active", "Inactive"],
+      "ContactType": ["Customer", "Supplier", "Both", "None"]
+    }
+  },
+  "Archive": {
+    "ops": {
+      "DocumentFolders": {"p": ["sessionID:string"], "r": "any"},
+      "DocumentFolderCounts": {"p": ["sessionID:string", "year:int!"], "r": "any"},
+      "DocumentFolderTabs": {"p": ["sessionID:string", "folderID:string"], "r": "any"},
+      "Documents": {"p": ["sessionID:string", "sortOrder:DocumentSortOrder!", "startDate:dateTime!", "endDate:dateTime!", "numberOfRecords:int!", "startRecord:int!"], "r": "any"},
+      "DocumentsInFolder": {"p": ["sessionID:string", "folderID:int!", "sortOrder:DocumentSortOrder!", "startDate:dateTime!", "endDate:dateTime!", "numberOfRecords:int!", "startRecord:int!"], "r": "any"},
+      "DocumentsInTab": {"p": ["sessionID:string", "tabID:int!", "sortOrder:DocumentSortOrder!", "startDate:dateTime!", "endDate:dateTime!", "numberOfRecords:int!", "startRecord:int!"], "r": "any"},
+      "FindDocument": {"p": ["sessionID:string", "documentID:string"], "r": "any"},
+      "DocumentsByType": {"p": ["sessionID:string", "documentType:int!", "sortOrder:DocumentSortOrder!", "startDate:dateTime!", "endDate:dateTime!", "numberOfRecords:int!", "startRecord:int!"], "r": "any"},
+      "ModifiedDocumentsByType": {"p": ["sessionID:string", "documentType:int!", "sortOrder:DocumentSortOrder!", "modifiedSince:dateTime!", "numberOfRecords:int!", "startRecord:int!"], "r": "any"},
+      "ModifiedDocumentsInFolder": {"p": ["sessionID:string", "folderID:int!", "sortOrder:DocumentSortOrder!", "modifiedSince:dateTime!", "numberOfRecords:int!", "startRecord:int!"], "r": "any"},
+      "SearchDocuments": {"p": ["sessionID:string", "searchOption:SearchOption!", "searchText:string", "folderID:int!", "tabID:int!", "sortOrder:DocumentSortOrder!", "startDate:dateTime!", "endDate:dateTime!", "numberOfRecords:int!", "startRecord:int!"], "r": "any"},
+      "DocumentBinaryData": {"p": ["sessionID:string", "documentID:string"], "r": "base64Binary"},
+      "DocumentFile": {"p": ["sessionID:string", "documentID:string"], "r": "any"},
+      "DocumentDownloadUrl": {"p": ["sessionID:string", "documentID:string"], "r": "string"},
+      "DocumentXMLData": {"p": ["sessionID:string", "documentID:string"], "r": "any"},
+      "DocumentXMLDataAsString": {"p": ["sessionID:string", "documentID:string"], "r": "string"},
+      "DocumentBundle": {"p": ["sessionID:string", "documentID:string"], "r": "any"},
+      "Currencies": {"p": ["sessionID:string"], "r": "any"}
+    },
+    "types": {},
+    "enums": {
+      "DocumentSortOrder": ["CreatedDesc", "CreatedAsc", "ModifiedDesc", "ModifiedAsc", "DocumentDateDesc", "DocumentDateAsc", "ContactNameAsc", "ContactNameDesc"],
+      "SearchOption": ["All", "Creator", "Contact", "Subject", "Tag", "Type"]
+    }
+  },
+  "Vat": {
+    "ops": {
+      "VATReturnList": {"p": ["sessionID:string", "administrationID:string", "year:int!", "modifiedAfter:dateTime!"], "r": "ArrayOfVATReturnInfo"},
+      "ActiveVATCodesList": {"p": ["sessionID:string", "administrationID:string"], "r": "ArrayOfVATCode"}
+    },
+    "types": {
+      "VATReturnInfo": ["documentID:string", "startDate:dateTime", "endDate:dateTime", "status:string", "sendDate:dateTime", "acknowledgeDate:dateTime", "modified:dateTime"],
+      "VATCode": ["description:string", "type:int", "typeDescription:string", "percentage:decimal", "country:string", "startDate:dateTime", "endDate:dateTime"]
+    },
+    "enums": {}
+  },
+  "Integration": {
+    "ops": {
+      "GetAdministrationData": {"p": ["sessionId:string", "administrationId:string"], "r": "AdministrationDataForIntegration"}
+    },
+    "types": {
+      "AdministrationDataForIntegration": ["CompanyName:string", "Description:string", "MainContactName:string", "MainContactEmail:string", "AddressLine_1:string", "AddressLine_2:string", "Postcode:string", "City:string", "Country:string", "EmailOutgoingInvoices:string", "PhoneWork:string", "MobileWork:string", "FaxWork:string", "CompanyLogoB64:any", "NavigationLogoB64:any", "IBAN:string", "BankAccountName:string", "CoCNumber:string", "VATNumber:string"]
+    },
+    "enums": {}
+  },
+  "UBL": {
+    "ops": {
+      "FindInvoices": {"p": ["sessionID:string", "administrationID:string", "invoiceMode:InvoiceMode!", "argXML:any"], "r": "any"},
+      "GetUBLDocument": {"p": ["sessionID:string", "administrationID:string", "invoiceID:string"], "r": "string"}
+    },
+    "types": {},
+    "enums": {
+      "InvoiceMode": ["Sales_ToBeSend", "Sales_Unpaid", "Sales_ToCollect", "Sales_InTransit", "Sales_AllInvoices", "Sales_Reverted", "Sales_InProcess", "Sales_CollectionInProcess", "Sales_CollectionAllInvoices", "Sales_CollectionUnpaid", "Sales_RevenueList", "Sales_CreditInvoices", "Purchase_ToBePaid", "Purchase_All", "Purchase_InProcess", "Purchase_InTransfer", "Purchase_CreditInvoices"]
+    }
+  },
+  "Backoffice": {
+    "ops": {
+      "GetWorkflow": {"p": ["sessionID:string", "administrationID:string"], "r": "any"},
+      "GetOutstandingQuestions": {"p": ["sessionID:string", "administrationID:string"], "r": "any"}
+    },
+    "types": {},
+    "enums": {}
+  }
+}

@@ -44,6 +44,9 @@ class ClientCredentials(ABC):
 
     def __init__(self, *, debug: bool = False):
         self.debug = debug
+        # Optional callable(service, operation, parameters, result), called after every
+        # successful read. Use it to keep the raw response next to the parsed values.
+        self.response_hook = None
         self._auth_in_process = False
         self._refresh_lock = threading.Lock()
 

@@ -29,3 +29,6 @@ credentials/
 
 # Downloaded WSDL snapshots
 _wsdl*
+
+# Local credentials and raw Yuki responses (customer data)
+local/

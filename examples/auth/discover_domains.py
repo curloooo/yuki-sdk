@@ -1,24 +1,15 @@
-"""List the domains visible to the access key in ``.env``.
+"""List the domains visible to the access key, before a domain is chosen.
 
-Requires ``API_KEY``. ``YUKI_REGION`` defaults to ``nl`` and must be ``nl`` or ``be``.
+Calls: Authenticate, Domains.
 """
 
-import os
+from yuki_sdk import discover_domains
 
-from dotenv import load_dotenv
+from examples.auth.auth import get_cred
 
-from src import discover_domains
+yuki_cred = get_cred()
 
-
-def main() -> None:
-    load_dotenv(".env")
-    api_key = os.getenv("API_KEY")
-    if not api_key:
-        raise RuntimeError("Set API_KEY in .env")
-    region = os.getenv("YUKI_REGION", "nl")
-    for domain in discover_domains(api_key, region):
-        print(f"{domain.id}  {domain.name}  {domain.url or ''}  {domain.status or ''}")
-
-
-if __name__ == "__main__":
-    main()
+domains = discover_domains(yuki_cred.api_key, yuki_cred.region)
+print(f"{len(domains)} domains visible in region {yuki_cred.region}")
+for domain in domains:
+    print(f"{domain.id}  {domain.name}  {domain.url or ''}  {domain.status or ''}")

@@ -4,3 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Integration tests call Yuki and count against the daily limit: run them with -m integration.
+addopts = "-m 'not integration'"
+markers = [
+    "unit: fast tests with no live Yuki dependency",
+    "integration: live Yuki reads (need local/yuki_tokens.json)",
+]
