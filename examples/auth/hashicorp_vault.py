@@ -2,7 +2,7 @@ import os
 import urllib3
 from dotenv import load_dotenv
 
-from src import ClientCredentialsHvac
+from yuki_sdk import ClientCredentialsHvac
 
 load_dotenv(".env")
 

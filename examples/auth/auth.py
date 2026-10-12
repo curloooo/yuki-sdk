@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from src import ClientCredentials
+from yuki_sdk import ClientCredentials
 
 from .hashicorp_vault import get_cred_hvac
 from .local_json import get_cred_json

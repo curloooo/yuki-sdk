@@ -4,8 +4,8 @@ from decimal import Decimal
 from lxml import etree
 import pytest
 
-from yuki_sdk.accounting import AccountingService, GLAccountBalance, GLAccountTransaction, OutstandingItem
-from yuki_sdk.contact import Administration, Contact, ContactService, SupportedLanguage
+from yuki_sdk.webservices.accounting import AccountingService, GLAccountBalance, GLAccountTransaction, OutstandingItem
+from yuki_sdk.webservices.contact import Administration, Contact, ContactService, SupportedLanguage
 from yuki_sdk.exceptions import YukiSessionError
 
 CONTACT_XML = """
@@ -98,7 +98,7 @@ class _Credentials:
 
 
 def test_contact_parser_reads_company_and_person():
-    contacts = [Contact.from_element(row) for row in etree.fromstring(CONTACT_XML)]
+    contacts = [Contact.from_plain(row) for row in etree.fromstring(CONTACT_XML)]
     company, person = contacts
     assert company.id == "dd4315ed-7431-4ded-8066-09e9378ee05a"
     assert company.name == "Numerix"
@@ -110,28 +110,28 @@ def test_contact_parser_reads_company_and_person():
 
 
 def test_administration_language_balance_transaction_and_item_parsers():
-    administration = Administration.from_element(etree.fromstring(ADMIN_XML)[0])
+    administration = Administration.from_plain(etree.fromstring(ADMIN_XML)[0])
     assert administration.name == "curlo-test"
     assert administration.domain_id == "7c0445a0-99fe-44ec-8f71-2747747955cd"
     assert administration.active is True
     assert administration.internal_customer_code == "C-1"
 
-    language = SupportedLanguage.from_element(etree.fromstring(LANGUAGE_XML)[0])
+    language = SupportedLanguage.from_plain(etree.fromstring(LANGUAGE_XML)[0])
     assert language.code == "nl-be"
     assert language.description == "Nederlands"
 
-    balance = GLAccountBalance.from_element(etree.fromstring(BALANCE_XML)[0])
+    balance = GLAccountBalance.from_plain(etree.fromstring(BALANCE_XML)[0])
     assert balance.code == "400000"
     assert balance.balance_type == "B"
     assert balance.amount == Decimal("144.00")
 
-    transaction = GLAccountTransaction.from_element(etree.fromstring(TRANSACTION_XML)[0])
+    transaction = GLAccountTransaction.from_plain(etree.fromstring(TRANSACTION_XML)[0])
     assert transaction.contact == "Numerix"
     assert transaction.project_code == "P1"
     assert transaction.file_name == "Invoice 1.pdf"
     assert transaction.amount == Decimal("144.00")
 
-    item = OutstandingItem.from_element(etree.fromstring(ITEM_XML)[0])
+    item = OutstandingItem.from_plain(etree.fromstring(ITEM_XML)[0])
     assert item.reference == "1"
     assert item.item_type == "Verkoopfactuur"
     assert item.item_type_id == "6"
@@ -227,7 +227,7 @@ def test_accounting_read_methods_call_the_matching_operation(calls):
     assert service.outstanding_creditor_items_by_date("admin-1", start, on)[0].contact == "Numerix"
     assert service.outstanding_creditor_items_by_date_outstanding("admin-1", on)[0].item_type_id == "6"
     assert service.outstanding_creditor_with_payment_reference("admin-1", start, on)[0].open_amount == Decimal("144.00")
-    assert service.outstanding_debtor_items("admin-1")[0].due_date == "2026-10-22"
+    assert service.outstanding_debtor_items("admin-1")[0].due_date == date(2026, 10, 22)
     assert service.outstanding_debtor_items_by_date("admin-1", start, on)[0].description.startswith("Factuur")
     assert service.outstanding_debtor_items_by_date_outstanding("admin-1", on)[0].id == "item-1"
     assert service.outstanding_debtor_items_with_language("admin-1")[0].item_type == "Verkoopfactuur"

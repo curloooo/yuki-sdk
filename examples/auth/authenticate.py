@@ -1,17 +1,17 @@
-"""Authenticate with the JSON or Vault credentials selected by ``.env``."""
+"""Authenticate and show the domain the session is bound to.
 
-from .auth import get_cred
+Calls: Authenticate + SetCurrentDomain (skipped while the stored session is valid), Domains, GetCurrentDomain.
+"""
 
+from examples.auth.auth import get_cred
 
-def main() -> None:
-    credentials = get_cred()
-    session_id = credentials.authenticate()
-    print(f"region={credentials.region} session_ready={bool(session_id)}")
-    for domain in credentials.list_domains():
-        print(f"{domain.id}  {domain.name}  {domain.url or ''}")
-    current = credentials.current_domain()
-    print(f"current_domain={current.id}  {current.name}")
+yuki_cred = get_cred()
 
+session_id = yuki_cred.authenticate()
+print(f"region={yuki_cred.region} session_ready={bool(session_id)} valid_until={yuki_cred.session_valid_until}")
 
-if __name__ == "__main__":
-    main()
+for domain in yuki_cred.list_domains():
+    print(f"{domain.id}  {domain.name}  {domain.url or ''}  {domain.status or ''}")
+
+current = yuki_cred.current_domain()
+print(f"current domain: {current.id}  {current.name}")

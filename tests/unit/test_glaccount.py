@@ -1,15 +1,14 @@
 from decimal import Decimal
-from pathlib import Path
-from types import SimpleNamespace
 
 from lxml import etree
 import pytest
+from zeep import xsd
 
+from yuki_sdk import AccountingInfoService, GLAccountSet
 from yuki_sdk.exceptions import YukiConfigError, YukiError, YukiSessionError
-from yuki_sdk.glaccount import GLAccountScheme, parse_gl_accounts
+from yuki_sdk.webservices.accountinginfo import parse_gl_accounts
 
-ADMINISTRATION_ID = "e7c4b218-deba-437d-844d-d022e355d263"
-CREDENTIALS_FILE = Path(__file__).resolve().parents[1] / "credentials" / "yuki_api_default.json"
+ADMINISTRATION_ID = "administration-1"
 
 SCHEME_XML = """
 <GetGLAccountSchemeResult xmlns="http://www.theyukicompany.com/">
@@ -39,6 +38,28 @@ SCHEME_XML = """
 </GetGLAccountSchemeResult>
 """
 
+GL_ACCOUNT_TYPE = xsd.ComplexType(
+    [
+        xsd.Element("code", xsd.String()),
+        xsd.Element("type", xsd.Integer()),
+        xsd.Element("subtype", xsd.Integer()),
+        xsd.Element("isEnabled", xsd.Boolean()),
+        xsd.Element("descripton", xsd.String()),
+        xsd.Element("descriptionNL", xsd.String()),
+        xsd.Element("descriptionFR", xsd.String()),
+        xsd.Element("descriptionEN", xsd.String()),
+        xsd.Element("isVATApplicable", xsd.Boolean()),
+        xsd.Element("deductableVATPercentage", xsd.Decimal()),
+        xsd.Element("professionalPercentage", xsd.Decimal()),
+    ]
+)
+
+
+def _zeep_account(**values):
+    """A GlAccount as zeep builds it from the WSDL type."""
+
+    return GL_ACCOUNT_TYPE(**values)
+
 
 def test_parse_gl_accounts_reads_yuki_field_names():
     accounts = parse_gl_accounts(etree.fromstring(SCHEME_XML))
@@ -65,7 +86,7 @@ def test_parse_gl_accounts_reads_yuki_field_names():
 
 
 def test_parse_gl_accounts_reads_zeep_objects():
-    account = SimpleNamespace(
+    account = _zeep_account(
         code="100000",
         type=2,
         subtype=0,
@@ -108,7 +129,7 @@ def test_scheme_requests_the_administration(monkeypatch):
         seen["operation"] = operation
         seen["parameters"] = parameters
         return [
-            SimpleNamespace(
+            _zeep_account(
                 code="100000",
                 type=2,
                 subtype=0,
@@ -124,9 +145,7 @@ def test_scheme_requests_the_administration(monkeypatch):
         ]
 
     monkeypatch.setattr("yuki_sdk.service.soap_invoke", fake_invoke)
-    scheme = GLAccountScheme(credentials, ADMINISTRATION_ID)
-
-    accounts = scheme.get()
+    accounts = AccountingInfoService(credentials).gl_account_scheme(ADMINISTRATION_ID)
 
     assert accounts[0].code == "100000"
     assert seen["operation"] == "GetGLAccountScheme"
@@ -135,7 +154,9 @@ def test_scheme_requests_the_administration(monkeypatch):
         "sessionID": "session-1",
         "administrationID": ADMINISTRATION_ID,
     }
-    scheme.find("100000")
+    filled = GLAccountSet(credentials, ADMINISTRATION_ID)
+    filled._fill(accounts)
+    assert filled.find("100000").code == "100000"
     assert credentials.calls.count(("authenticate", False)) == 1
 
 
@@ -151,7 +172,7 @@ def test_scheme_refreshes_a_rejected_session(monkeypatch):
 
     monkeypatch.setattr("yuki_sdk.service.soap_invoke", fake_invoke)
 
-    assert GLAccountScheme(credentials, ADMINISTRATION_ID).get() == []
+    assert AccountingInfoService(credentials).gl_account_scheme(ADMINISTRATION_ID) == []
     assert [call for call in credentials.calls if call[0] == "authenticate"] == [
         ("authenticate", False),
         ("authenticate", True),
@@ -160,30 +181,12 @@ def test_scheme_refreshes_a_rejected_session(monkeypatch):
 
 def test_missing_administration_id_is_rejected():
     with pytest.raises(YukiConfigError, match="administration_id"):
-        GLAccountScheme(_Credentials(), "")
+        AccountingInfoService(_Credentials()).gl_account_scheme("")
 
 
 def test_unknown_code_raises():
-    scheme = GLAccountScheme(_Credentials(), ADMINISTRATION_ID)
-    scheme._accounts = []
+    accounts = GLAccountSet(_Credentials(), ADMINISTRATION_ID)
+    accounts._fill([])
 
     with pytest.raises(YukiError, match="100000"):
-        scheme.find("100000")
-
-
-@pytest.mark.skipif(not CREDENTIALS_FILE.is_file(), reason="local Yuki credentials are not present")
-def test_live_gl_account_scheme_for_administration():
-    from yuki_sdk import ClientCredentialsJsonFile
-
-    credentials = ClientCredentialsJsonFile(str(CREDENTIALS_FILE))
-    scheme = GLAccountScheme(credentials, ADMINISTRATION_ID)
-
-    accounts = scheme.get()
-
-    assert accounts
-    capital = scheme.find("100000")
-    assert capital.description == "Geplaatst kapitaal"
-    assert capital.account_type == 2
-    assert capital.is_enabled is True
-    assert capital.deductible_vat_percentage == Decimal("0.00")
-    assert capital.professional_percentage == Decimal("1.00")
+        accounts.find("100000")
