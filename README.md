@@ -12,29 +12,58 @@ Python 3.10 or newer.
 
 ## Credentials
 
-Create an access key in Yuki, then store it in a JSON file:
+You only set two values yourself: the access key and the region. The SDK fills in the rest and writes it back to the credential store.
+
+| Field | Set by | How |
+|---|---|---|
+| `api_key` | you | Yuki portal: Settings → Webservices → new access key, with read access to the webservices you use. |
+| `region` | you | `be` (`api.yukiworks.be`) or `nl` (`api.yukiworks.nl`). |
+| `domain_id` | SDK | `DomainSet.get()` lists the domains of the key; `credentials.set_domain_id(...)` stores one. |
+| `admin_id` | SDK, optional | `AdministrationSet.get()` lists the administrations of the domain; `credentials.update_metadata(admin_id=...)` stores the default. Or pass `administration_id=` to each set or record. |
+| `session_id`, `session_valid_until` | SDK | Created on the first call and renewed when they expire. Never set by hand. |
+
+### 1. Store the key and the region
+
+In a JSON file (keep it out of git; `local/` is gitignored):
 
 ```json
 {
     "api_key": "...",
-    "region": "be",
-    "domain_id": "..."
+    "region": "be"
 }
 ```
 
-`region` is `nl` or `be`. Keep this file out of git.
+Or in HashiCorp Vault (KV v2): `api_key` in the secret data, `region` in the custom metadata.
 
-```python
-from yuki_sdk import ClientCredentialsJsonFile, DomainSet
+### 2. Let the SDK fill in the domain and the administration
 
-credentials = ClientCredentialsJsonFile(r"C:\path\to\yuki_api_default.json")
-domains = DomainSet(credentials)
-domains.get()  # needs only api_key and region
-for domain in domains:
-    print(domain.id, domain.name)
+With the example script, from the repository root:
+
+```
+python -m examples.auth.set_domain
 ```
 
-`python -m examples.auth.set_domain` lists the domains and administrations of the key and stores the domain.
+It reads `local/yuki_tokens.json` (or `YUKI_CREDENTIALS`, or Vault when `VAULT_TOKEN` is set), lists the domains and administrations of the key, and stores the domain, and the administration when there is only one. With more than one, run it again with the ids to store: `python -m examples.auth.set_domain <domain_id> [<administration_id>]`. About 5 calls.
+
+Or in code:
+
+```python
+from yuki_sdk import AdministrationSet, ClientCredentialsJsonFile, DomainSet
+
+credentials = ClientCredentialsJsonFile("local/yuki_tokens.json")
+
+domains = DomainSet(credentials)
+domains.get()  # needs only api_key and region
+credentials.set_domain_id(domains[0].id)
+
+administrations = AdministrationSet(credentials)
+administrations.get()  # opens a session bound to the domain
+credentials.update_metadata(admin_id=administrations[0].id)
+```
+
+The store now holds `domain_id`, `admin_id`, `session_id` and `session_valid_until`; every later run reuses them.
+
+"Invalid access key" or "Domain has no active database" usually means the wrong `region`.
 
 ## Usage
 
@@ -77,7 +106,7 @@ A set is iterable and has `count`, `[i]` and `to_json()`. Every `get` replaces t
 
 Import the sets from `yuki_sdk`. Each area is one module in `yuki_sdk.webservices`: the set you construct, and the SOAP client it calls (`AccountingInfoService`, ...). Every read has a set or record; the clients stay importable for the rare case that needs the raw service call. Session, SOAP and parsing stay in `service.py`, `soap.py` and `parsing.py`.
 
-Every call counts against the domain's daily allowance, also faults and `Authenticate`; Yuki's limit raises `YukiRateLimitError`. Set `credentials.response_hook` to keep each raw response.
+Every call counts against the domain's daily allowance, also faults and `Authenticate`; Yuki's limit raises `YukiRateLimitError`. `credentials.calls` counts the calls of this run; with `debug=True` every call is printed with its number. Set `credentials.response_hook` to keep each raw response.
 
 ## Examples
 
@@ -105,15 +134,9 @@ Unit tests are in `tests/unit/`, live tests in `tests/integration/<webservice>/`
 ```python
 from yuki_sdk import ClientCredentialsHvac
 
-credentials = ClientCredentialsHvac(
-    url="https://vault.example",
-    token="...",
-    mount_point="secret",
-    path="yuki_api",
-)
-credentials.authenticate()
+credentials = ClientCredentialsHvac(url="https://vault.example", token="...", mount_point="secret", path="yuki_api")
 ```
 
-TLS verification is off by default. Pass `verify=True` or a CA bundle path to turn it on.
+Same fields as the JSON file (see [Credentials](#credentials)): `api_key` and `session_id` in the secret data, the rest in the custom metadata. TLS verification is off by default; pass `verify=True` or a CA bundle path to turn it on.
 
 Session handling, credential fields, and errors are described in [docs/guidelines.md](docs/guidelines.md).

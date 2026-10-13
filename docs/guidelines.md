@@ -18,28 +18,16 @@ Authentication uses only the configured host. A rejected key is not retried on t
 The session flow, against the Sales WSDL, is:
 
 1. `Authenticate(accessKey)` returns a session id.
-2. `Domains(sessionID)` lists the domains this key can see.
+2. `Domains(sessionID)` lists the domains this key can see (`DomainSet.get()`, before a domain is stored).
 3. `SetCurrentDomain(sessionID, domainID)` binds the session.
 
 `YukiService.invoke` calls `authenticate()` and retries once with `force=True` when Yuki rejects the session. Read methods for Contact, Accounting, and AccountingInfo go through that base class. Write operations are not wrapped.
 
-`debug=True` prints SOAP operation names and the WSDL URL. It does not print the access key or parameter values.
+`credentials.calls` counts the SOAP calls made with the credentials in this run. `debug=True` prints every call with its operation name, WSDL URL and number. It does not print the access key or parameter values.
 
 ## JSON credentials
 
-```json
-{
-    "api_key": "...",
-    "region": "be",
-    "domain_id": "...",
-    "admin_id": "",
-    "administration_name": "Example B.V.",
-    "session_id": "",
-    "session_valid_until": "1900-01-01T00:00:00+00:00"
-}
-```
-
-`authenticate()` writes `session_id` and `session_valid_until` after a successful refresh. `domain_id` is required before authentication. Set it with `set_domain_id()` or `update_metadata()`.
+Only `api_key` and `region` are written by hand. `set_domain_id()` and `update_metadata()` add `domain_id`, `admin_id` and `administration_name`; `authenticate()` writes `session_id` and `session_valid_until` after a successful refresh. `domain_id` is required before authentication; `DomainSet.get()` works without it.
 
 Local examples read `.env`. When `VAULT_TOKEN` is set, `examples.auth.auth.get_cred()` uses Vault (`VAULT_URL`, `VAULT_MOUNT`, `VAULT_PATH`). Otherwise it uses the JSON file `YUKI_CREDENTIALS`, or `local/yuki_tokens.json`.
 
@@ -97,7 +85,7 @@ Rows whose layout Yuki does not document (contacts, archive listings, folders, `
 | `GetSuppliersAndCustomers`, `SearchContacts` | 100, fixed | `pageNumber`, 1-based |
 | Archive listings | `numberOfRecords` | `startRecord` |
 
-Whether `startRecord` counts from 0 or 1 is not documented. Every `iter_*` method (`iter_transactions`, `iter_suppliers_and_customers`, `iter_contacts`, `iter_documents*`) goes through `parsing.iter_unique_pages`: it moves on by the page length and drops ids it already returned, so an overlap of one row is harmless and no row is skipped. It stops on an empty page, a short page, or a page without new ids.
+`startRecord` counts from 1 (verified live: start 5 returns the fifth record onwards). Yuki does not keep the order of lines on the same date stable between calls, so a line can move across a page boundary. Every `iter_*` method (`iter_transactions`, `iter_suppliers_and_customers`, `iter_contacts`, `iter_documents*`) goes through `parsing.iter_unique_pages`: it moves on by the page length and drops ids it already returned, so an overlap of one row is harmless and no row is skipped. It stops on an empty page, a short page, or a page without new ids.
 
 The contact iterators sort on `HID` by default, so the order stays stable between pages. The single-page methods keep their own defaults (`search`: active and inactive; `suppliers_and_customers`: active only).
 
