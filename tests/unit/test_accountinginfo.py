@@ -338,3 +338,27 @@ def test_parsers_read_lxml_elements():
     assert transaction.amount == Decimal("-12.40")
     assert transaction.contact.id == "c-1"
     assert transaction.contact.hid == 5
+
+
+def test_iter_transactions_reads_the_day_again_when_a_line_is_pushed_off(monkeypatch):
+    """Live (BUHA, 13 October 2026): page 2 repeated the last line of page 1 and one line was missing."""
+
+    day = datetime(2025, 5, 20)
+    other = datetime(2021, 9, 8)
+    rows = {n: _transaction(n, transactionDate=day if n in (2, 3) else other) for n in range(1, 6)}
+    for n in (2, 3):
+        rows[n]["document"] = dict(rows[n]["document"], id="bank-statement")
+
+    def page(parameters):
+        if parameters["startDate"] == parameters["endDate"] == day:
+            return [rows[2], rows[3]]
+        # The order shifted between the calls: tx-2 comes back first on page 2, tx-3 is never returned.
+        return {1: [rows[1], rows[2]], 3: [rows[2], rows[4]], 5: [rows[5]]}[parameters["startRecord"]]
+
+    service, calls = _service(monkeypatch, {"GetTransactions": page})
+
+    result = list(service.iter_transactions(ADMINISTRATION_ID, date(2020, 1, 1), date(2026, 12, 31), page_size=2))
+
+    assert sorted(row.id for row in result) == ["tx-1", "tx-2", "tx-3", "tx-4", "tx-5"]
+    assert len(calls) == 5  # three pages, and the day: a full page of 2 asks for one more
+
