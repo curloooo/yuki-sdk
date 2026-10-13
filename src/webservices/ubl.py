@@ -17,6 +17,7 @@ from enum import Enum
 from lxml import etree
 
 from ..parsing import plain, to_text
+from ..record import YukiRecord
 from ..service import YukiService, require_text, soap_value
 
 
@@ -84,3 +85,17 @@ class UblService(YukiService):
                 argXML=_arg_xml(arg_xml),
             )
         )
+
+
+class FoundInvoices(YukiRecord):
+    """Invoices of a list in the Yuki web app (``FindInvoices``, one call). Field: ``data`` (raw result)."""
+
+    def get(self, invoice_mode: str, arg_xml: str | etree._Element | None = None) -> None:
+        """``FindInvoices`` for ``invoice_mode``; without ``arg_xml`` an empty search document is sent."""
+
+        self._set(UblService(self.client_credentials).find_invoices(self.administration_id, invoice_mode, arg_xml))
+
+    @property
+    def data(self):
+        return self._value
+

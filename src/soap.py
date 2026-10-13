@@ -270,6 +270,7 @@ def discover_domains(
     region: str,
     *,
     debug: bool = False,
+    on_call=None,
 ) -> list[Domain]:
     """Authenticate and return the domains visible to an access key.
 
@@ -284,8 +285,9 @@ def discover_domains(
         api_key,
         region=selected_region,
         debug=debug,
+        on_call=on_call,
     )
-    return list_domains(endpoint, session_id, debug=debug)
+    return list_domains(endpoint, session_id, debug=debug, on_call=on_call)
 
 
 def parse_domains(result) -> list[Domain]:

@@ -14,6 +14,7 @@ from typing import Iterator
 from ..parsing import first_rows, get, iter_unique_pages, plain, to_bool, to_date, to_datetime, to_text
 from ..service import YukiService, require_text, soap_value
 from ..record import YukiRecordSet
+from ..soap import Domain, discover_domains
 
 # Yuki returns at most this many contacts per page.
 CONTACT_PAGE_SIZE = 100
@@ -389,6 +390,33 @@ class _Contact:
     @property
     def _service(self) -> ContactService:
         return ContactService(self.client_credentials)
+
+
+class DomainSet(YukiRecordSet[Domain]):
+    """Domains of the access key.
+
+    ``get`` needs only ``api_key`` and ``region`` (``Authenticate`` + ``Domains``, two calls):
+    use it to find the ``domain_id`` to store. ``get_current`` holds the domain the stored
+    session is bound to (``GetCurrentDomain``).
+    """
+
+    def get(self) -> None:
+        """``Domains``."""
+
+        credentials = self.client_credentials
+        self._fill(
+            discover_domains(
+                credentials.api_key,
+                credentials.region,
+                debug=credentials.debug,
+                on_call=getattr(credentials, "count_call", None),
+            )
+        )
+
+    def get_current(self) -> None:
+        """``GetCurrentDomain``: the domain of the stored session (authenticates when needed)."""
+
+        self._fill([self.client_credentials.current_domain()])
 
 
 class AdministrationSet(_Contact, YukiRecordSet[Administration]):

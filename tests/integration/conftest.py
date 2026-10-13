@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-from yuki_sdk import AccountingInfoService, ArchiveService, ClientCredentialsJsonFile, to_jsonable
+from yuki_sdk import ClientCredentialsJsonFile, DocumentFolderSet, TransactionSet, to_jsonable
 
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
@@ -71,7 +71,8 @@ def transactions(yuki_cred, administration_id, period):
     """The first 100 general ledger lines of the period, shared by the tests (one call)."""
 
     start, end = period
-    rows = AccountingInfoService(yuki_cred).transactions(administration_id, start, end, number_of_records=100)
+    rows = TransactionSet(yuki_cred, administration_id)
+    rows.get_page(start, end, number_of_records=100)
     if not rows:
         pytest.skip(f"no transactions in {start}..{end}; set YUKI_TEST_YEAR")
     return rows
@@ -89,4 +90,6 @@ def document_id(transactions) -> str:
 def folders(yuki_cred):
     """Archive folders, shared by the tests (one call)."""
 
-    return ArchiveService(yuki_cred).document_folders()
+    folders = DocumentFolderSet(yuki_cred)
+    folders.get()
+    return folders

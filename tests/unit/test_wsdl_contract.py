@@ -404,7 +404,7 @@ def test_every_typed_response_has_a_parser():
             if inner in spec["types"]:
                 typed.add((service, inner))
     assert typed <= parsed_types, f"typed responses without a parser check: {typed - parsed_types}"
-    assert yuki_sdk.__all__  # the package imports cleanly
+    assert yuki_sdk.TransactionSet  # the package imports cleanly
 
 
 # --- untyped responses: the layouts documented in Yuki's support articles ---

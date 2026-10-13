@@ -1,17 +1,19 @@
-from yuki_sdk import ContactService
+from yuki_sdk import AdministrationSet, ContactSet, LanguageSet
 
 
 def test_administrations_contain_the_configured_one(yuki_cred, administration_id):
-    administrations = ContactService(yuki_cred).administrations()
+    administrations = AdministrationSet(yuki_cred)
+    administrations.get()
 
     assert administration_id in {administration.id for administration in administrations}
 
 
-def test_suppliers_and_customers_first_page(yuki_cred):
-    contacts = ContactService(yuki_cred).suppliers_and_customers(active="Both", search_option="All")
+def test_contacts_first_page(yuki_cred):
+    contacts = ContactSet(yuki_cred)
+    contacts.get(max_pages=1)
 
     assert all(contact.id for contact in contacts)
-    assert len({contact.id for contact in contacts}) == len(contacts)
+    assert len({contact.id for contact in contacts}) == contacts.count
 
 
 def test_contacts_in_ledger_are_found(yuki_cred, transactions):
@@ -20,10 +22,14 @@ def test_contacts_in_ledger_are_found(yuki_cred, transactions):
     contact = next((row.contact for row in transactions if row.contact and row.contact.id), None)
     if contact is None:
         return
-    found = ContactService(yuki_cred).search(contact.id, search_option="ID")
+    found = ContactSet(yuki_cred)
+    found.search(contact.id, search_option="ID")
 
     assert contact.id in {item.id for item in found}
 
 
 def test_supported_languages(yuki_cred):
-    assert ContactService(yuki_cred).supported_languages()
+    languages = LanguageSet(yuki_cred)
+    languages.get()
+
+    assert languages

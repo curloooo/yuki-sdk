@@ -25,13 +25,16 @@ Create an access key in Yuki, then store it in a JSON file:
 `region` is `nl` or `be`. Keep this file out of git.
 
 ```python
-from yuki_sdk import ClientCredentialsJsonFile
+from yuki_sdk import ClientCredentialsJsonFile, DomainSet
 
 credentials = ClientCredentialsJsonFile(r"C:\path\to\yuki_api_default.json")
-credentials.authenticate()
-for domain in credentials.list_domains():
+domains = DomainSet(credentials)
+domains.get()  # needs only api_key and region
+for domain in domains:
     print(domain.id, domain.name)
 ```
+
+`python -m examples.auth.set_domain` lists the domains and administrations of the key and stores the domain.
 
 ## Usage
 
@@ -64,14 +67,15 @@ pdf = document.file().data
 |---|---|
 | General ledger | `GLAccountSet`, `TransactionSet`, `TransactionDetailSet`, `TransactionDocument`, `Period`, `StartBalanceSet`, `ProjectSet`, `ProjectBalanceSet`, `PaymentMethodSet`, `ContactDefaultValueSet`, `RGSEntrySet` |
 | Balances and open items | `GLAccountBalanceSet`, `GLAccountTransactionSet`, `NetRevenue`, `OutstandingItemSet` |
-| Contacts | `AdministrationSet`, `ContactSet`, `LanguageSet`, `Company` |
+| Domains and contacts | `DomainSet`, `AdministrationSet`, `ContactSet`, `LanguageSet`, `Company` |
 | Archive | `DocumentFolderSet`, `DocumentFolderTabSet`, `DocumentSet`, `Document` (`file()`, `bundle()`, `ubl()`, ...) |
 | VAT | `VATCodeSet`, `VATReturnSet` |
 | Back office | `Workflow`, `OutstandingQuestions` |
+| UBL | `FoundInvoices`, `Document.ubl()` |
 
 A set is iterable and has `count`, `[i]` and `to_json()`. Every `get` replaces the content. Each class says in its docstring which Yuki operation it calls and how often.
 
-Import the sets from `yuki_sdk`. Each area is one module in `yuki_sdk.webservices`: the set you construct, and the SOAP client it calls (`AccountingInfoService`, ...). That client stays available for a read without a set, such as `UblService.find_invoices`. Session, SOAP and parsing stay in `service.py`, `soap.py` and `parsing.py`.
+Import the sets from `yuki_sdk`. Each area is one module in `yuki_sdk.webservices`: the set you construct, and the SOAP client it calls (`AccountingInfoService`, ...). Every read has a set or record; the clients stay importable for the rare case that needs the raw service call. Session, SOAP and parsing stay in `service.py`, `soap.py` and `parsing.py`.
 
 Every call counts against the domain's daily allowance, also faults and `Authenticate`; Yuki's limit raises `YukiRateLimitError`. Set `credentials.response_hook` to keep each raw response.
 

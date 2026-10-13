@@ -1,8 +1,6 @@
-from yuki_sdk import BackofficeService
+from yuki_sdk import OutstandingQuestions, Workflow
 
 
 def test_workflow_and_questions(yuki_cred, administration_id):
-    service = BackofficeService(yuki_cred)
-
-    service.workflow(administration_id)
-    service.outstanding_questions(administration_id)
+    Workflow(yuki_cred, administration_id).get()
+    OutstandingQuestions(yuki_cred, administration_id).get()

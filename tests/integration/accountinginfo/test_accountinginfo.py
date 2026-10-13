@@ -1,7 +1,19 @@
 from datetime import date
 from decimal import Decimal
 
-from yuki_sdk import AccountingInfoService, FinancialMode, GLAccountSet
+from yuki_sdk import (
+    ContactDefaultValueSet,
+    FinancialMode,
+    GLAccountSet,
+    PaymentMethodSet,
+    Period,
+    ProjectSet,
+    RGSEntrySet,
+    StartBalanceSet,
+    TransactionDetailSet,
+    TransactionDocument,
+    TransactionSet,
+)
 
 
 def test_gl_account_scheme(yuki_cred, administration_id, transactions):
@@ -29,10 +41,12 @@ def test_transactions_first_page(transactions, period):
 
 
 def test_transactions_pages_do_not_overlap(yuki_cred, administration_id, period, transactions):
-    if len(transactions) < 100:
+    if transactions.count < 100:
         return
     start, end = period
-    second = AccountingInfoService(yuki_cred).transactions(administration_id, start, end, number_of_records=100, start_record=100)
+    # startRecord counts from 1: the second page of 100 starts at record 101.
+    second = TransactionSet(yuki_cred, administration_id)
+    second.get_page(start, end, start_record=101, number_of_records=100)
 
     assert not {row.id for row in transactions} & {row.id for row in second}
 
@@ -40,22 +54,24 @@ def test_transactions_pages_do_not_overlap(yuki_cred, administration_id, period,
 def test_transaction_details(yuki_cred, administration_id, period, transactions):
     start, end = period
     code = transactions[0].gl_account_code
-    details = AccountingInfoService(yuki_cred).transaction_details(administration_id, start, end, gl_account_code=code)
+    details = TransactionDetailSet(yuki_cred, administration_id)
+    details.get(start, end, gl_account_code=code)
 
     assert details
     assert all(detail.gl_account_code in (None, code) for detail in details)
 
 
 def test_period_and_modified_date(yuki_cred, administration_id, year):
-    service = AccountingInfoService(yuki_cred)
+    period = Period(yuki_cred, administration_id)
+    period.get(year)
 
-    period = service.period_date_table(administration_id, year)
-    assert period.period is None or isinstance(period.period, date)
-    service.financial_year_modified_date(administration_id, year)
+    assert period.start is None or isinstance(period.start, date)
+    period.modified()
 
 
 def test_start_balance(yuki_cred, administration_id, year):
-    balances = AccountingInfoService(yuki_cred).start_balance_by_gl_account(administration_id, year, financial_mode=FinancialMode.FISCAL)
+    balances = StartBalanceSet(yuki_cred, administration_id)
+    balances.get(year, financial_mode=FinancialMode.FISCAL)
 
     for balance in balances:
         assert balance.gl_account_code
@@ -65,7 +81,8 @@ def test_start_balance(yuki_cred, administration_id, year):
 
 def test_transaction_document(yuki_cred, administration_id, transactions):
     row = next(row for row in transactions if row.document)
-    document = AccountingInfoService(yuki_cred).transaction_document(administration_id, row.id)
+    document = TransactionDocument(yuki_cred, administration_id)
+    document.get(row.id)
 
     assert document.data is None or isinstance(document.data, bytes)
 
@@ -74,13 +91,19 @@ def test_contact_default_values(yuki_cred, administration_id, transactions):
     contact_id = next((row.contact.id for row in transactions if row.contact and row.contact.id), None)
     if contact_id is None:
         return
-    for defaults in AccountingInfoService(yuki_cred).contact_default_values(administration_id, contact_id):
-        assert defaults.contact_id in (None, contact_id)
+    defaults = ContactDefaultValueSet(yuki_cred, administration_id)
+    defaults.get(contact_id)
+
+    assert all(value.contact_id in (None, contact_id) for value in defaults)
 
 
 def test_payment_methods_projects_and_rgs(yuki_cred, administration_id):
-    service = AccountingInfoService(yuki_cred)
+    methods = PaymentMethodSet(yuki_cred, administration_id)
+    methods.get()
+    projects = ProjectSet(yuki_cred, administration_id)
+    projects.get()
+    rgs = RGSEntrySet(yuki_cred, administration_id)
+    rgs.get()
 
-    assert all(method.description for method in service.custom_payment_methods(administration_id))
-    assert all(project.id for project in service.projects(administration_id))
-    service.rgs_scheme(administration_id)
+    assert all(method.description for method in methods)
+    assert all(project.id for project in projects)
