@@ -26,20 +26,20 @@ class _Soap:
     def __init__(self):
         self.calls = []
 
-    def authenticate_access_key(self, wsdl_url_value, api_key, *, region=None, debug=False):
+    def authenticate_access_key(self, wsdl_url_value, api_key, *, region=None, debug=False, on_call=None):
         self.calls.append(("Authenticate", wsdl_url_value, api_key, region))
         if api_key == "bad-key":
             raise YukiAuthError(f"Invalid access key (region '{region}'). The other Yuki region was not tried.")
         return "session-1"
 
-    def set_current_domain(self, wsdl_url_value, session_id, domain_id, *, debug=False):
+    def set_current_domain(self, wsdl_url_value, session_id, domain_id, *, debug=False, on_call=None):
         self.calls.append(("SetCurrentDomain", wsdl_url_value, session_id, domain_id))
 
-    def list_domains(self, wsdl_url_value, session_id, *, debug=False):
+    def list_domains(self, wsdl_url_value, session_id, *, debug=False, on_call=None):
         self.calls.append(("Domains", wsdl_url_value, session_id))
         return []
 
-    def get_current_domain(self, wsdl_url_value, session_id, *, debug=False):
+    def get_current_domain(self, wsdl_url_value, session_id, *, debug=False, on_call=None):
         self.calls.append(("GetCurrentDomain", wsdl_url_value, session_id))
         from yuki_sdk import Domain
 
@@ -305,3 +305,21 @@ def test_json_set_domain_id_is_written(tmp_path):
     stored = json.loads(path.read_text(encoding="utf-8"))
     assert stored["domain_id"] == "domain-9"
     assert stored["session_id"] == ""
+
+
+def test_calls_are_counted_per_run_and_printed_in_debug(tmp_path, capsys):
+    from yuki_sdk.soap import _trace
+
+    path = tmp_path / "yuki.json"
+    _write_credentials(path)
+    credentials = ClientCredentialsJsonFile(str(path), debug=True)
+
+    _trace(True, "Authenticate", "https://api.yukiworks.be/ws/Sales.asmx?WSDL", credentials.count_call)
+    _trace(True, "GetTransactions", "https://api.yukiworks.be/ws/AccountingInfo.asmx?WSDL", credentials.count_call)
+
+    assert credentials.calls == 2
+    printed = capsys.readouterr().out.splitlines()
+    assert printed[-1].endswith("(call 2 in this run)") and "GetTransactions" in printed[-1]
+    # Nothing is written to the store.
+    assert "calls" not in json.loads(path.read_text(encoding="utf-8"))
+

@@ -142,7 +142,7 @@ def test_administration_language_balance_transaction_and_item_parsers():
 def calls(monkeypatch):
     recorded = []
 
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         recorded.append((wsdl_url_value, operation, parameters))
         if operation in {"NetRevenue", "NetRevenueFiscal"}:
             return Decimal("144.00")
@@ -273,7 +273,7 @@ def test_rejected_session_is_retried_once(monkeypatch):
             forces.append(force)
             return "session-1"
 
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         attempts["count"] += 1
         if attempts["count"] == 1:
             raise YukiSessionError("Invalid session ID")

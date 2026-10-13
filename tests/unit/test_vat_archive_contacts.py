@@ -26,7 +26,7 @@ def patch_soap(monkeypatch):
     def install(responses):
         calls = []
 
-        def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+        def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
             calls.append((wsdl_url_value, operation, parameters))
             response = responses[operation]
             return response(parameters) if callable(response) else response

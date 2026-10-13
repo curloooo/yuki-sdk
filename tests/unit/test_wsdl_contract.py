@@ -164,7 +164,7 @@ def test_every_public_read_is_checked(cls):
 def recorded(monkeypatch):
     calls = []
 
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         calls.append((re.search(r"/ws/(\w+)\.asmx", wsdl_url_value).group(1), operation, parameters))
         return None
 

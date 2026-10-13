@@ -142,14 +142,16 @@ def invoke(
     operation: str,
     *,
     debug: bool = False,
+    on_call=None,
     **parameters,
 ):
     """Call one SOAP operation and return the zeep result.
 
+    ``on_call(operation)`` is called before the call: Yuki also counts failed calls.
     Parameter values are not logged. Session ids and access keys stay out of debug output.
     """
 
-    _trace(debug, operation, wsdl_url_value)
+    _trace(debug, operation, wsdl_url_value, on_call)
     try:
         method = getattr(get_client(wsdl_url_value).service, operation)
     except AttributeError as exc:
@@ -168,6 +170,7 @@ def authenticate_access_key(
     *,
     region: str | None = None,
     debug: bool = False,
+    on_call=None,
 ) -> str:
     """Call ``Authenticate(accessKey)`` and return the session id."""
 
@@ -175,7 +178,7 @@ def authenticate_access_key(
     if not access_key:
         raise YukiConfigError("api_key is required")
 
-    _trace(debug, "Authenticate", wsdl_url_value)
+    _trace(debug, "Authenticate", wsdl_url_value, on_call)
     try:
         result = get_client(wsdl_url_value).service.Authenticate(accessKey=access_key)
     except Fault as exc:
@@ -194,11 +197,12 @@ def list_domains(
     session_id: str,
     *,
     debug: bool = False,
+    on_call=None,
 ) -> list[Domain]:
     """Call ``Domains(sessionID)`` and return the domains for this key."""
 
     _require_session(session_id)
-    _trace(debug, "Domains", wsdl_url_value)
+    _trace(debug, "Domains", wsdl_url_value, on_call)
     try:
         result = get_client(wsdl_url_value).service.Domains(sessionID=session_id)
     except Fault as exc:
@@ -214,6 +218,7 @@ def set_current_domain(
     domain_id: str,
     *,
     debug: bool = False,
+    on_call=None,
 ) -> None:
     """Call ``SetCurrentDomain(sessionID, domainID)``."""
 
@@ -224,7 +229,7 @@ def set_current_domain(
             "domain_id is required. Call discover_domains() and store the chosen domain id."
         )
 
-    _trace(debug, "SetCurrentDomain", wsdl_url_value)
+    _trace(debug, "SetCurrentDomain", wsdl_url_value, on_call)
     try:
         get_client(wsdl_url_value).service.SetCurrentDomain(
             sessionID=session_id,
@@ -241,11 +246,12 @@ def get_current_domain(
     session_id: str,
     *,
     debug: bool = False,
+    on_call=None,
 ) -> Domain:
     """Call ``GetCurrentDomain(sessionID)`` and return the active domain."""
 
     _require_session(session_id)
-    _trace(debug, "GetCurrentDomain", wsdl_url_value)
+    _trace(debug, "GetCurrentDomain", wsdl_url_value, on_call)
     try:
         result = get_client(wsdl_url_value).service.GetCurrentDomain(sessionID=session_id)
     except Fault as exc:
@@ -308,9 +314,13 @@ def _require_session(session_id: str) -> None:
         raise YukiSessionError("session_id is required. Call authenticate() first.")
 
 
-def _trace(debug: bool, operation: str, wsdl_url_value: str) -> None:
+def _trace(debug: bool, operation: str, wsdl_url_value: str, on_call=None) -> None:
+    """Count one SOAP call with ``on_call(operation)`` (returns its number) and, in debug, print it."""
+
+    number = on_call(operation) if on_call is not None else None
     if debug:
-        print(f"Yuki SOAP: {operation} [{wsdl_url_value}]")
+        suffix = f" (call {number} in this run)" if number is not None else ""
+        print(f"Yuki SOAP: {operation} [{wsdl_url_value}]{suffix}")
 
 
 def _raise_for_fault(fault: Fault, *, region: str | None = None) -> None:

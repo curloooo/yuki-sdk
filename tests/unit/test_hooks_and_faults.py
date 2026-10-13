@@ -37,7 +37,7 @@ class _Credentials:
 
 
 def test_response_hook_receives_the_raw_result_without_session(monkeypatch):
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         return [{"id": "tx-1", "amount": Decimal("1")}]
 
     monkeypatch.setattr("yuki_sdk.service.soap_invoke", fake_invoke)

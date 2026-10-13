@@ -72,7 +72,7 @@ def _service(monkeypatch, responses):
 
     calls = []
 
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         calls.append((operation, parameters))
         response = responses[operation]
         return response(parameters) if callable(response) else response
@@ -174,7 +174,8 @@ def test_iter_transactions_pages_until_a_short_page(monkeypatch):
     rows = [_transaction(number) for number in range(1, 6)]
 
     def page(parameters):
-        start = parameters["startRecord"]
+        # Live: startRecord counts from 1.
+        start = parameters["startRecord"] - 1
         return rows[start : start + parameters["numberOfRecords"]]
 
     service, calls = _service(monkeypatch, {"GetTransactions": page})
@@ -182,7 +183,7 @@ def test_iter_transactions_pages_until_a_short_page(monkeypatch):
     result = list(service.iter_transactions(ADMINISTRATION_ID, date(2026, 1, 1), date(2026, 12, 31), page_size=2))
 
     assert [row.id for row in result] == ["tx-1", "tx-2", "tx-3", "tx-4", "tx-5"]
-    assert [parameters["startRecord"] for _, parameters in calls] == [0, 2, 4]
+    assert [parameters["startRecord"] for _, parameters in calls] == [1, 3, 5]
 
 
 def test_iter_transactions_survives_one_based_paging(monkeypatch):
