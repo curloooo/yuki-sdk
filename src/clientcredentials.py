@@ -40,6 +40,9 @@ class ClientCredentials(ABC):
     a session as valid for 24 hours. This client stores it for 23 hours and
     refreshes earlier than that. Pass ``force=True`` when a later call reports
     that Yuki has already ended the session.
+
+    ``calls`` counts the SOAP calls made with this object (in memory, this run only).
+    With ``debug`` every call is printed with its number.
     """
 
     def __init__(self, *, debug: bool = False):
@@ -49,6 +52,8 @@ class ClientCredentials(ABC):
         self.response_hook = None
         self._auth_in_process = False
         self._refresh_lock = threading.Lock()
+        self._count_lock = threading.Lock()
+        self.calls = 0
 
         self._api_key = ""
         self._region = ""
@@ -93,6 +98,13 @@ class ClientCredentials(ABC):
     @session_valid_until.setter
     def session_valid_until(self, value):
         self._session_valid_until = _parse_datetime(value)
+
+    def count_call(self, operation: str) -> int:
+        """Count one SOAP call made with these credentials and return its number."""
+
+        with self._count_lock:
+            self.calls += 1
+            return self.calls
 
     @property
     def host(self) -> str:
@@ -187,13 +199,13 @@ class ClientCredentials(ABC):
         """Return the domains visible to the current session."""
 
         self.authenticate()
-        return list_domains(self.wsdl_url(), self.session_id, debug=self.debug)
+        return list_domains(self.wsdl_url(), self.session_id, debug=self.debug, on_call=self.count_call)
 
     def current_domain(self) -> Domain:
         """Return the domain bound to the current session."""
 
         self.authenticate()
-        return get_current_domain(self.wsdl_url(), self.session_id, debug=self.debug)
+        return get_current_domain(self.wsdl_url(), self.session_id, debug=self.debug, on_call=self.count_call)
 
     def _can_reuse_session(self, force: bool) -> bool:
         if force or not self.session_id:
@@ -224,12 +236,14 @@ class ClientCredentials(ABC):
             self.api_key,
             region=self.region,
             debug=self.debug,
+            on_call=self.count_call,
         )
         set_current_domain(
             endpoint,
             session_id,
             self.domain_id,
             debug=self.debug,
+            on_call=self.count_call,
         )
         self.session_id = session_id
         self.session_valid_until = datetime.now(timezone.utc) + SESSION_TTL

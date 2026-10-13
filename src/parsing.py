@@ -287,6 +287,7 @@ def iter_unique_pages(
     next_position: Callable[[int, list[Row]], int],
     key: Callable[[Row], Hashable] = lambda row: row.id,
     max_pages: int | None = None,
+    on_repeat: Callable[[Row], None] | None = None,
 ) -> Iterator[Row]:
     """Yield the rows of a paged read, each key once.
 
@@ -294,6 +295,8 @@ def iter_unique_pages(
     position (a record offset or a page number). Stops on an empty page, a
     short page, a page with no new keys, or after ``max_pages``. The "no new
     keys" stop protects against a read that ignores its paging parameter.
+    ``on_repeat(row)`` is called for every row of a page that also has new rows and repeats
+    a row already returned: the order shifted between calls, so another row was pushed off.
     """
 
     seen: set = set()
@@ -303,6 +306,11 @@ def iter_unique_pages(
         page = read_page(position)
         pages += 1
         fresh = [row for row in page if key(row) not in seen]
+        if on_repeat is not None and fresh:
+            # A page with new rows and repeated rows: the order shifted between calls.
+            for row in page:
+                if key(row) in seen:
+                    on_repeat(row)
         for row in fresh:
             seen.add(key(row))
             yield row

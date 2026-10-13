@@ -124,7 +124,7 @@ def test_scheme_requests_the_administration(monkeypatch):
     credentials = _Credentials()
     seen = {}
 
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         seen["wsdl"] = wsdl_url_value
         seen["operation"] = operation
         seen["parameters"] = parameters
@@ -164,7 +164,7 @@ def test_scheme_refreshes_a_rejected_session(monkeypatch):
     credentials = _Credentials()
     attempts = {"count": 0}
 
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         attempts["count"] += 1
         if attempts["count"] == 1:
             raise YukiSessionError("Invalid session ID")

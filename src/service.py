@@ -58,6 +58,7 @@ class YukiService:
             self.client_credentials.wsdl_url(self.service_name),
             operation,
             debug=self.client_credentials.debug,
+            on_call=getattr(self.client_credentials, "count_call", None),
             **payload,
         )
 

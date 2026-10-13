@@ -530,10 +530,10 @@ class AccountingInfoService(YukiService):
         financial_mode: int = FinancialMode.FISCAL,
         data_groups: str = DEFAULT_DATA_GROUPS,
         number_of_records: int = DEFAULT_PAGE_SIZE,
-        start_record: int = 0,
+        start_record: int = 1,
         search_values: list[tuple[str, str]] | None = None,
     ) -> list[Transaction]:
-        """Return one page of ``GetTransactions`` (one call).
+        """Return one page of ``GetTransactions`` (one call). ``start_record`` counts from 1.
 
         An empty ``gl_account_code`` asks for every account. ``search_values`` is a
         list of ``(SearchOption, SearchValue)``, for example
@@ -569,31 +569,55 @@ class AccountingInfoService(YukiService):
         financial_mode: int = FinancialMode.FISCAL,
         data_groups: str = DEFAULT_DATA_GROUPS,
         page_size: int = DEFAULT_PAGE_SIZE,
-        first_record: int = 0,
+        first_record: int = 1,
         max_pages: int | None = None,
     ) -> Iterator[Transaction]:
         """Yield every transaction in the range, one call per page.
+
+        ``startRecord`` counts from 1 (live: start 5 returns the fifth record onwards).
+        Yuki does not keep the order of the lines of a document stable between calls
+        (live: the order is by document, not by date). When a line comes back on a second
+        page, another line was pushed off: the days of that line's document are then read
+        again on their own (one call per day) and the lines still missing are added.
 
         Stops on an empty page, a short page, a page without new ids, or after
         ``max_pages``. Each id is yielded once.
         """
 
-        return iter_unique_pages(
-            lambda start_record: self.transactions(
-                administration_id,
-                start_date,
-                end_date,
-                gl_account_code=gl_account_code,
-                financial_mode=financial_mode,
-                data_groups=data_groups,
-                number_of_records=page_size,
-                start_record=start_record,
-            ),
-            first=first_record,
-            page_size=page_size,
-            next_position=lambda start_record, rows: start_record + len(rows),
-            max_pages=max_pages,
-        )
+        def read_range(first: date | datetime, last: date | datetime, on_repeat=None):
+            return iter_unique_pages(
+                lambda start_record: self.transactions(
+                    administration_id,
+                    first,
+                    last,
+                    gl_account_code=gl_account_code,
+                    financial_mode=financial_mode,
+                    data_groups=data_groups,
+                    number_of_records=page_size,
+                    start_record=start_record,
+                ),
+                first=first_record,
+                page_size=page_size,
+                next_position=lambda start_record, rows: start_record + len(rows),
+                max_pages=max_pages,
+                on_repeat=on_repeat,
+            )
+
+        seen: dict[str, Transaction] = {}
+        repeated: list[Transaction] = []
+        for row in read_range(start_date, end_date, repeated.append):
+            seen[row.id] = row
+            yield row
+        if not repeated:
+            return
+        documents = {row.document.id for row in repeated if row.document is not None and row.document.id}
+        days = {row.date for row in repeated if row.date}
+        days |= {row.date for row in seen.values() if row.date and row.document is not None and row.document.id in documents}
+        for day in sorted(days):
+            for row in read_range(day, day):
+                if row.id not in seen:
+                    seen[row.id] = row
+                    yield row
 
     def transaction_details(
         self,
@@ -783,7 +807,7 @@ class TransactionSet(_AccountingInfo, YukiRecordSet[Transaction]):
         start_date: date | datetime,
         end_date: date | datetime,
         *,
-        start_record: int = 0,
+        start_record: int = 1,
         number_of_records: int = 100,
         gl_account_code: str = "",
         financial_mode: int = FinancialMode.FISCAL,

@@ -164,7 +164,7 @@ def test_every_public_read_is_checked(cls):
 def recorded(monkeypatch):
     calls = []
 
-    def fake_invoke(wsdl_url_value, operation, *, debug=False, **parameters):
+    def fake_invoke(wsdl_url_value, operation, *, debug=False, on_call=None, **parameters):
         calls.append((re.search(r"/ws/(\w+)\.asmx", wsdl_url_value).group(1), operation, parameters))
         return None
 
@@ -404,7 +404,7 @@ def test_every_typed_response_has_a_parser():
             if inner in spec["types"]:
                 typed.add((service, inner))
     assert typed <= parsed_types, f"typed responses without a parser check: {typed - parsed_types}"
-    assert yuki_sdk.__all__  # the package imports cleanly
+    assert yuki_sdk.TransactionSet  # the package imports cleanly
 
 
 # --- untyped responses: the layouts documented in Yuki's support articles ---
