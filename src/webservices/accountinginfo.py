@@ -41,9 +41,10 @@ from ..service import YukiService, as_datetime, require_positive, require_text, 
 from ..exceptions import YukiError
 from ..record import YukiRecord, YukiRecordSet
 
-# Element names of the optional groups of a ``Transaction``. Yuki does not
-# document the accepted ``dataGroups`` values; these are the names in the WSDL.
-DEFAULT_DATA_GROUPS = "contact,document,documentProcessed,documentMatched,foreignCurrency,vat,project"
+# The optional groups of a ``Transaction``. Yuki does not document the accepted ``dataGroups``
+# values. Mostly the element names of the WSDL, except the matching: ``documentmatching`` fills
+# ``documentMatched`` (``documentMatched`` itself leaves it empty; Yuki support, verified live).
+DEFAULT_DATA_GROUPS = "contact,document,documentProcessed,documentmatching,foreignCurrency,vat,project"
 DEFAULT_PAGE_SIZE = 100
 
 

@@ -117,6 +117,14 @@ def first_rows(value, *row_names: str) -> list:
     return []
 
 
+def single(value):
+    """The first value when Yuki repeats an element (it then parses as a list), else the value."""
+
+    if isinstance(value, list):
+        return next((item for item in value if item is not None), None)
+    return value
+
+
 def get(data, *names):
     """Return the first non-empty value for ``names`` in a plain dict."""
 

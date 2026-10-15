@@ -362,3 +362,18 @@ def test_iter_transactions_reads_the_day_again_when_a_line_is_pushed_off(monkeyp
     assert sorted(row.id for row in result) == ["tx-1", "tx-2", "tx-3", "tx-4", "tx-5"]
     assert len(calls) == 5  # three pages, and the day: a full page of 2 asks for one more
 
+
+def test_transactions_ask_documentmatching():
+    """Yuki fills documentMatched (matchDate, matchedBy) only with the data group 'documentmatching' (live, 15 October 2026)."""
+
+    assert "documentmatching" in DEFAULT_DATA_GROUPS.split(",")
+    assert "documentMatched" not in DEFAULT_DATA_GROUPS.split(",")
+
+
+def test_outstanding_item_with_contact_id_twice():
+    """Yuki repeats ContactID in the outstanding items (live BUHA, 15 October 2026)."""
+
+    from yuki_sdk import OutstandingItem
+
+    item = OutstandingItem.from_plain({"ID": "1", "ContactID": ["c6277", "c6277"], "OpenAmount": "83.60"})
+    assert item.contact_id == "c6277"

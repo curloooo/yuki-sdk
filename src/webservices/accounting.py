@@ -12,7 +12,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
-from ..parsing import get, plain, to_date, to_decimal, to_text
+from ..parsing import get, plain, single, to_date, to_decimal, to_text
 from ..service import YukiService, as_datetime, require_text, soap_value
 from ..exceptions import YukiConfigError
 from ..record import YukiRecord, YukiRecordSet
@@ -116,7 +116,7 @@ class OutstandingItem:
             date=to_date(get(data, "Date")),
             description=to_text(get(data, "Description")),
             contact=to_text(get(data, "Contact")),
-            contact_id=to_text(get(data, "ContactID")),
+            contact_id=to_text(single(get(data, "ContactID"))),
             open_amount=to_decimal(get(data, "OpenAmount")),
             original_amount=to_decimal(get(data, "OriginalAmount")),
             item_type=to_text(item_type),
